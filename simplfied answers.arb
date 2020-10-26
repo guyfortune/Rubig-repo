@@ -1,0 +1,166 @@
+require 'csv'
+require 'set'
+
+=begin
+this code mainly needed two types of methods
+methods to catagorize the data in the sheets and methods to clean the data
+all methods I labelled breakdown are used to clean the data up in some way
+the otehr three are to get it into a useful state
+=end
+
+
+#hash of one type is a method I wrote to give a hash comprised only of memebers of one header with keys of another header, it's really the heart and soul
+def hash_of_one_type(filename, key, type, tested)
+    result = Hash.new(0)
+        CSV.foreach(filename, headers: true, converters: %i[numeric date]) do |row|
+            if row[key] == type #checks if item belongs to one header
+                result[row[tested]] += 1  #files by other header
+            end 
+        end
+    result
+end
+
+#set is a sometimes useful return type, this is a pretty simple method that gives files as that
+def any_type_set(filename, key)
+    return CSV.foreach(filename, headers: true, converters: %i[numeric date]).inject(Set.new) do |result, row|
+        result << row[key]
+    end
+end
+
+#any type hash takes a file and a header and returns a hash that gives how many of each header appears 
+def any_type_hash(filename, key)
+    result = Hash.new(0)
+    CSV.foreach(filename, headers: true, converters: %i[numeric date]) do |row|
+        result[row[key]] += 1
+    end
+    return result
+end
+
+#breakdown by percents uses any type has but prints it in percents instead of returning a hash
+def breakdown_by_percents(filename, key)
+    type = any_type_hash(filename, key)
+    totalInteractions = 0
+    for x in type; totalInteractions += x[1] end
+    for x in type
+        print x[0] + " "
+        print 100 * x[1]/totalInteractions
+        puts "%"
+    end
+end
+
+#breakdown age needed its own function becasue we were asked to do some specific stats on age, prints the age stats neatly 
+def breakdown_age(filename, key)
+    nums = CSV.parse(File.read(filename), headers: true).by_col[key]
+    nums.delete('NA')
+    nums.map!{|x| x.to_i}
+    print "the lowest age interacted with was "
+    puts nums[0]
+    print "the highest age interacted with was "
+    puts nums[nums.size-1]
+    print "the mean was "
+    puts nums.sum / nums.size
+    print "the median was "
+    puts nums[nums.size/2]
+end
+
+#breakdown hash prints the raw numbers from hash a little more neatly than just printing the hash
+def breakdown_hash(hash)
+    totalInteractions = 0
+    hash = hash.sort_by(&:last).reverse!
+    for x in hash
+        print x[0].to_s + " "
+        puts x[1]
+    end
+end
+
+#breakdown hash percent prints the percentage breakdown of a hash
+def breakdown_hash_percent(hash)
+    totalInteractions = 0
+    hash = hash.sort_by(&:last).reverse!
+    for x in hash; totalInteractions += x[1] end
+    for x in hash
+        print x[0].to_s + " "
+        print 100 * x[1]/totalInteractions
+        puts "%"
+    end
+end
+
+
+#helper to make me not write the filename everytime
+if __FILE__ == $0
+    ct = 'data for ruby big code\ct_hartford_2020_04_01.csv'
+    ky = 'data for ruby big code\ky_louisville_2020_04_01.csv'
+end
+
+=begin
+#uncommenting this will give you the answers to spacco's initial questions
+print "in Hartford the following violations were issued: "
+for x in any_type_set(ct, 'reason_for_stop'); print x +' 'end
+puts ''
+print "in Louisville the following violations were issued: "
+for x in any_type_set(ky, 'violation'); print x +' 'end
+puts''
+
+puts "in Hartford the following breakdowns of race and sex were seen: "
+breakdown_by_percents(ct, 'subject_race')
+breakdown_by_percents(ct, 'subject_sex')
+puts "in Louisville the following breakdowns of race and sex was seen: "
+breakdown_by_percents(ky, 'subject_race')
+breakdown_by_percents(ky, 'subject_sex')
+
+puts "in Hartford following the stats were seen for age:"
+breakdown_age(ct, 'subject_age')
+puts "in Louisville the following stats were seen for age:"
+breakdown_age(ky, 'subject_age')
+=end 
+
+=begin
+#This gives my answers to my questions, importantly I use the breakdown_percent methods to simplfy the output but you can get the raw numbers by chagning to breakdown
+
+puts "in Hartford the following breakdowns of race was seen: "
+breakdown_by_percents(ct, 'subject_race')
+#breakdown_hash(any_type_hash(ct, 'subject_race'))
+puts "in Louisville the following breakdowns of race was seen: "
+breakdown_by_percents(ky, 'subject_race')
+#breakdown_hash(any_type_hash(ky, 'subject_race'))
+
+puts 'in lousiville:'
+puts 'breakdown by sex in the total population is:'
+#breakdown_hash(any_type_hash(ky, 'subject_sex'))
+breakdown_hash_percent(any_type_hash(ky, 'subject_sex'))
+puts 'breakdown by sex in the black population is:'
+#breakdown_hash(hash_of_one_type(ky, 'subject_race', 'black', 'subject_sex'))
+breakdown_hash_percent(hash_of_one_type(ky, 'subject_race', 'black', 'subject_sex'))
+
+puts 'in hartford:'
+puts 'breakdown by sex in the total population is:'
+#breakdown_hash(any_type_hash(ct, 'subject_sex'))
+breakdown_hash_percent(any_type_hash(ct, 'subject_sex'))
+puts 'breakdown by sex in the black population is:'
+#breakdown_hash(hash_of_one_type(ct, 'subject_race', 'black', 'subject_sex'))
+breakdown_hash_percent(hash_of_one_type(ct, 'subject_race', 'black', 'subject_sex'))
+
+puts 'in lousiville:'
+puts 'breakdown by age in the total population is:'
+#breakdown_hash(any_type_hash(ky, 'subject_age'))
+breakdown_hash_percent(any_type_hash(ky, 'subject_age'))
+puts 'breakdown by age in the black population is:'
+#breakdown_hash(hash_of_one_type(ky, 'subject_race', 'black', 'subject_age'))
+breakdown_hash_percent(hash_of_one_type(ky, 'subject_race', 'black', 'subject_age'))
+
+puts 'in hartford:'
+puts 'breakdown by outcome in the total population is:'
+#breakdown_hash(any_type_hash(ct, 'outcome'))
+breakdown_hash_percent(any_type_hash(ct, 'outcome'))
+puts 'breakdown by outcome in the black population is:'
+#breakdown_hash(hash_of_one_type(ct, 'subject_race', 'black', 'outcome'))
+breakdown_hash_percent(hash_of_one_type(ct, 'subject_race', 'black', 'outcome'))
+
+puts 'in lousiville:'
+puts 'breakdown by outcome in the total population is:'
+#breakdown_hash(any_type_hash(ky, 'outcome'))
+breakdown_hash_percent(any_type_hash(ky, 'outcome'))
+puts 'breakdown by outcome in the black population is:'
+#breakdown_hash(hash_of_one_type(ky, 'subject_race', 'black', 'outcome'))
+breakdown_hash_percent(hash_of_one_type(ky, 'subject_race', 'black', 'outcome'))
+=end
